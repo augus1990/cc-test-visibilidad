@@ -1,12 +1,8 @@
 package cc.test.visibilidad;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
-
-import com.opencsv.exceptions.CsvValidationException;
 
 import cc.test.visibilidad.domain.DomainData;
 import cc.test.visibilidad.domain.Product;
@@ -16,7 +12,7 @@ import cc.test.visibilidad.utils.DataSourceUtils;
 
 /**
  * Prueba tecnica - Visibilidad 
- * @author augusto
+ * @author Augusto Mendoza
  */
 public class App {
 	
@@ -24,67 +20,61 @@ public class App {
 	private final static String SIZE_FILE_PATH = "./assets/size-1.csv";
 	private final static String STOCK_FILE_PATH = "./assets/stock.csv";
 
-	private static void showVisibleProducts() {
+	/**
+	 * Muestra en la termina los ID de los productos visibles.
+	 * @throws Exception
+	 */
+	private static void showVisibleProducts() throws Exception {
 		Map<Integer,Product> visibleProducts;
 		DomainData domainData;
+		
+		domainData = loadData(PRODUCT_FILE_PATH,SIZE_FILE_PATH,STOCK_FILE_PATH);
+		
+		System.out.println("Obteniendo los productos visibles...");
+		visibleProducts = getVisibleProducts(domainData);
+		System.out.println("Listo. Productos visibles listos.");
+		
+		System.out.print("\nRESULTADO: ");
+		System.out.println(
+				visibleProducts.values().stream().map(e->String.valueOf(e.getProductId())).collect(Collectors.joining(", ")) 
+		);
+	}
+	
+	/**
+	 * Carga los datos desde la fuente.
+	 * @param productFilePath
+	 * @param sizeFilePath
+	 * @param stockFilePath
+	 * @return
+	 * @throws Exception
+	 */
+	private static DomainData loadData(String productFilePath, String sizeFilePath, String stockFilePath) throws Exception{
 		Map<Integer,Product> productMap = null;
 		Map<Integer,Size> sizeMap = null;
 		Map<Integer,Stock> stockMap = null;
 		
 		System.out.println("Cargando tabla de productos...");
-		try {
-			productMap = DataSourceUtils.loadProductCsvFile(PRODUCT_FILE_PATH);
-		} catch (FileNotFoundException e) {
-			System.out.println("No existe el archivo. Detalle: "+PRODUCT_FILE_PATH);
-		} catch (CsvValidationException e) {
-			System.out.println("El archivo no tiene un formato valido. Detalle: "+PRODUCT_FILE_PATH);
-		} catch (IOException e) {
-			System.out.println("Error de acceso al archivo especificado. Detalle: "+PRODUCT_FILE_PATH);
-		} catch (Exception e) {
-			System.out.println("Error inesperado. Detalle: "+PRODUCT_FILE_PATH+" / "+e);
-		}
+		productMap = DataSourceUtils.loadProductCsvFile(productFilePath);
 		System.out.println("Listo. Tabla de producto cargadas.");
 		
-		
-		
 		System.out.println("Cargando tabla de talles...");
-		try {
-			sizeMap = DataSourceUtils.loadSizeCsvFile(SIZE_FILE_PATH,productMap);
-		} catch (FileNotFoundException e) {
-			System.out.println("No existe el archivo. Detalle: "+SIZE_FILE_PATH);
-		} catch (CsvValidationException e) {
-			System.out.println("El archivo no tiene un formato valido. Detalle: "+SIZE_FILE_PATH);
-		} catch (IOException e) {
-			System.out.println("Error de acceso al archivo especificado. Detalle: "+SIZE_FILE_PATH);
-		} catch (Exception e) {
-			System.out.println("Error inesperado. Detalle: "+SIZE_FILE_PATH+" / "+e);
-		}
+		sizeMap = DataSourceUtils.loadSizeCsvFile(sizeFilePath,productMap);
 		System.out.println("Listo. Tabla de talles cargadas.");
 		
-		
 		System.out.println("Cargando tabla de stock...");
-		try {
-			stockMap = DataSourceUtils.loadStockCsvFile(STOCK_FILE_PATH,sizeMap);
-		} catch (FileNotFoundException e) {
-			System.out.println("No existe el archivo. Detalle: "+STOCK_FILE_PATH);
-		} catch (CsvValidationException e) {
-			System.out.println("El archivo no tiene un formato valido. Detalle: "+STOCK_FILE_PATH);
-		} catch (IOException e) {
-			System.out.println("Error de acceso al archivo especificado. Detalle: "+STOCK_FILE_PATH);
-		} catch (Exception e) {
-			System.out.println("Error inesperado. Detalle: "+STOCK_FILE_PATH+" / "+e);
-		}
+		stockMap = DataSourceUtils.loadStockCsvFile(stockFilePath,sizeMap);
 		System.out.println("Listo. Tabla de stock cargadas.");
 		
-		domainData = new DomainData(productMap,sizeMap,stockMap);
-		
-		visibleProducts = getVisibleProducts(domainData);
-		
-		System.out.println("RESULTADO: \n"+String.valueOf(visibleProducts).replaceAll("\\],", "\\],\n"));
+		return new DomainData(productMap,sizeMap,stockMap);
 	}
 	
+	/**
+	 * Obtiene un map ordenado con los productos visibles.
+	 * @param domainData
+	 * @return
+	 */
 	private static Map<Integer,Product> getVisibleProducts(DomainData domainData){
-		Map<Integer,Product> visibleProducts = new HashMap<Integer,Product>();
+		Map<Integer,Product> visibleProducts = new TreeMap<Integer,Product>();
 		
 		visibleProducts = domainData.getProductMap().values().stream()
 							.filter(
@@ -96,6 +86,12 @@ public class App {
 		return visibleProducts;
 	}
 	
+	/**
+	 * Determina si un producto es visible o no.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean isVisible(Product product, DomainData domainData) {
 		boolean isVisible = false;
 		
@@ -113,6 +109,9 @@ public class App {
 		return isVisible;
 	}
 	
+	/**
+	 * Indica si el producto especificado tiene un talla disponible. La talla esta disponible si tiene stock o es backsoon.
+	 */
 	private static boolean hasAvailableSize(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -123,6 +122,12 @@ public class App {
 		return result;
 	}
 	
+	/**
+	 * Indica si el producto tiene disponible algun talle no especial.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean hasAvailableNoSpecialSize(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -136,6 +141,12 @@ public class App {
 		return result;
 	}
 	
+	/**
+	 * Indica si el producto tiene disponible algun talle especial.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean hasAvailableSpecialSize(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -149,6 +160,12 @@ public class App {
 		return result;
 	}
 
+	/**
+	 * Indica si el producto especificado tiene algun talle backsoon asociado.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean hasBackSoonSizeLinked(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -159,6 +176,12 @@ public class App {
 		return result;
 	}
 	
+	/**
+	 * Indica si un producto es compuesto o no.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean isCompoundProduct(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -169,6 +192,12 @@ public class App {
 		return result;
 	}
 	
+	/**
+	 * Indica si el producto especificado tiene un talle especial asociado.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean hasSpecialSizeLinked(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -180,6 +209,12 @@ public class App {
 		return result;
 	} 
 	
+	/**
+	 * Indica si el producto especificado tiene un talle no especial asociado.
+	 * @param product
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean hasNoSpecialSizeLinked(Product product, DomainData domainData) {
 		boolean result = false;
 		
@@ -191,6 +226,12 @@ public class App {
 		return result;
 	}
 	
+	/**
+	 * Indica si el talle especificado esta disponible. La talla esta disponible si tiene stock o es backsoon.
+	 * @param size
+	 * @param domainData
+	 * @return
+	 */
 	private static boolean isAvailableSize(Size size, DomainData domainData) {
 		boolean result = false;
 		boolean hasStock = false;
@@ -206,7 +247,10 @@ public class App {
 		return result;
 	}
 	
-    public static void main(String[] args) {
+	/**
+	 * @author Augusto Mendoza
+	 */
+    public static void main(String[] args) throws Exception {
     	System.out.println("Prueba tecnica - Visibilidad");
     	showVisibleProducts();
     }
